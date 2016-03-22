@@ -1,0 +1,5 @@
+./universal_treebanks_v2.0.tar.gz
+./temp/parc_test.txt
+./temp/softmax_arq.txt
+./temp/softmax_arq.txt~
+./models/*

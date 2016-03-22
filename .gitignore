@@ -1,0 +1,12 @@
+./universal_treebanks_v2.0.tar.gz
+./temp/*
+./par/*
+./models/*
+./embeddings/arquivo_apalvras.txt
+./embeddings/label.txt
+./embeddings/label.txt~
+./embeddings/pos.txt
+./embeddings/pos.txt~
+./embeddings/word.txt
+./embeddings/word.txt~
+./ptwiki-latest-pages-articles.xml.bz2
