@@ -473,7 +473,6 @@ class TransitionParser(ParserI):
                 key = Transition.SHIFT
                 self._write_to_file(key,w_features, p_features, l_features, input_file)
                 operation.shift(conf)
-            self._write_blenk_in_file(input_file)
 
         input_file.close()
         print(" Number of training examples : " + str(len(depgraphs)))

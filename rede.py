@@ -67,6 +67,7 @@ def pre_trainneural(parser_std):
             if dict_opaux[key] == element:
                 dict_op[key] = one_hot[0][element]
     extract_training_data_arc_standard()
+
     X,Y = get_all(words, tags, labels, dict_op)
     X = np.array(X)
     Y = np.array(Y)
@@ -95,7 +96,7 @@ def get_all(words, tags, labels, dict_op):
     Y = []
 
     #Todo o conjunto de treinamento esta no arquivo input_file da forma [Y, X]
-    input_file = open("./corpus/temp/parc_test.txt","w")
+    input_file = open("./corpus/temp/parc_test.txt","r")
 
 
     for j in range(0,len(dict_train)):
