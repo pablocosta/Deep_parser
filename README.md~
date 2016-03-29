@@ -1,0 +1,63 @@
+# Deep_parser
+An implementation of http://cs.stanford.edu/~danqi/papers/emnlp2014.pdf in python with Keras/Theano library.
+
+--------------------------
+
+Comando para rodar:
+
+python3.4 rede.py
+
+versao do keras = 0.2
+
+O código das features foi inspirado na implementação de https://github.com/jiangfeng1124/acl15-clnndep
+
+for (int i = 2; i >= 0; --i)
+    {
+        int index = c.get_stack(i);
+        f_word.push_back(get_word_id(c.get_word(index)));
+        f_pos.push_back(get_pos_id(c.get_pos(index)));
+    }
+
+    for (int i = 0; i <= 2; ++i)
+    {
+        int index = c.get_buffer(i);
+        f_word.push_back(get_word_id(c.get_word(index)));
+        f_pos.push_back(get_pos_id(c.get_pos(index)));
+   
+    }
+
+    for (int i = 0; i <= 1; ++i)
+    {
+        int k = c.get_stack(i);
+
+        int index = c.get_left_child(k);
+        f_word.push_back(get_word_id(c.get_word(index)));
+        f_pos.push_back(get_pos_id(c.get_pos(index)));
+        f_label.push_back(get_label_id(c.get_label(index)));
+   
+        index = c.get_right_child(k);
+        f_word.push_back(get_word_id(c.get_word(index)));
+        f_pos.push_back(get_pos_id(c.get_pos(index)));
+        f_label.push_back(get_label_id(c.get_label(index)));
+   
+        index = c.get_left_child(k, 2);
+        f_word.push_back(get_word_id(c.get_word(index)));
+        f_pos.push_back(get_pos_id(c.get_pos(index)));
+        f_label.push_back(get_label_id(c.get_label(index)));
+   
+        index = c.get_right_child(k, 2);
+        f_word.push_back(get_word_id(c.get_word(index)));
+        f_pos.push_back(get_pos_id(c.get_pos(index)));
+        f_label.push_back(get_label_id(c.get_label(index)));
+   
+        index = c.get_left_child(c.get_left_child(k));
+        f_word.push_back(get_word_id(c.get_word(index)));
+        f_pos.push_back(get_pos_id(c.get_pos(index)));
+        f_label.push_back(get_label_id(c.get_label(index)));
+   
+        index = c.get_right_child(c.get_right_child(k));
+        f_word.push_back(get_word_id(c.get_word(index)));
+        f_pos.push_back(get_pos_id(c.get_pos(index)));
+        f_label.push_back(get_label_id(c.get_label(index)));
+    }
+
