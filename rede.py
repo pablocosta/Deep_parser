@@ -9,7 +9,6 @@ from keras.models import Sequential
 from keras.regularizers import l2
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.embeddings import Embedding
-from Limpar_corpus import DependencyReader
 from nltk.parse import DependencyGraph
 from parser import TransitionParser
 

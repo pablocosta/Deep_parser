@@ -428,6 +428,7 @@ class TransitionParser(ParserI):
 
             count_proj += 1
             conf = Configuration(depgraph)
+
             while len(conf.buffer) > 0:
                 b0 = conf.buffer[0]
                 (w_features, p_features, l_features) = conf.extract_features()
@@ -606,16 +607,18 @@ class TransitionParser(ParserI):
                     baseTransition = strTransition.split(":")[0]
 
                     if baseTransition == Transition.LEFT_ARC:
-                        operation.left_arc(conf, strTransition.split(":")[1])
-                        continue
-
+                        if operation.left_arc(conf, strTransition.split(":")[1]) != -1:
+                            break
                     elif baseTransition == Transition.RIGHT_ARC:
-                        operation.right_arc(conf, strTransition.split(":")[1])
-                        continue
-
+                        if operation.right_arc(conf, strTransition.split(":")[1]) != -1:
+                            break
                     elif baseTransition == Transition.REDUCE:
-                        operation.reduce(conf)
-                        continue
+                        if operation.reduce(conf) != -1:
+                            break
+                    elif baseTransition == Transition.SHIFT:
+                        if operation.shift(conf) != -1:
+                            break
+
 
 
 
