@@ -165,21 +165,19 @@ class Configuration(object):
         word_features   = []
         pos_features    = []
         label_features  = []
-        for i in reversed(range(0, 2)):
+        for i in reversed(range(0, 3)):
             stack_idx0 = self.getStack(i)
             word_features.append(self.getWord(stack_idx0))
             pos_features.append(self.getPos(stack_idx0))
 
 
-        for i in range(0, 2):
+        for i in range(0, 3):
             buffer_idx0 = self.getBuffer(i)
             word_features.append(self.getWord(buffer_idx0))
             pos_features.append(self.getPos(buffer_idx0))
 
-        for i in range(0, 1):
+        for i in range(0, 2):
             k = self.getStack(i)
-
-
 
             #leftmost child
             index = self.getLeftChild(k)
@@ -218,7 +216,9 @@ class Configuration(object):
             pos_features.append(self.getPos(index))
             label_features.append(self.getLabel(index))
 
-
+        print("tamanho word:", len(word_features))
+        print("tamanho pos:", len(pos_features))
+        print("tamanho label:", len(label_features))
         return word_features, pos_features, label_features
 
 
