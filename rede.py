@@ -98,7 +98,6 @@ def pre_trainneural(parser_std):
                 dict_op[key] = one_hot[0][element]
     #extract_training_data_arc_standard()
     X, Y = get_all(words_indx, tags_indx, labels_indx, dict_op)
-
     X = np.array(X)
     Y = np.array(Y)
     model.fit(X=X, y=Y, nb_epoch=nb_epoch, batch_size=batch_size)
@@ -130,19 +129,21 @@ def Get_features_(list, dict):
 def get_all(words, tags, labels, dict_op):
     # this function get all configurations from the training files
     i = 0
-    X = []
-    Y = []
-    x = []
+    aux = 0
+    X_ = []
+    Y_ = []
+
     # Todo o conjunto de treinamento esta no arquivo input_file da forma Y [features_word] [features_pos] [features_label]
     #input_file = open(, "rb")
 
-    input = open("./corpus/temp/parc_test.pickl", 'rb')
-    object = pickle.load(input)
+    a = open("./corpus/temp/parc_test.pickl", 'rb')
+    object = pickle.load(a)
     for element in object:
+        x = []
         for l in element:
-            if i == 0:
 
-                Y.append(Get_features_fromop(l, dict_op))
+            if i == 0:
+                Y_.append(Get_features_fromop(l, dict_op))
                 i += 1
             else:
                 if i == 1:
@@ -153,8 +154,7 @@ def get_all(words, tags, labels, dict_op):
                     x.append(Get_features_(l, labels))
                 i += 1
         i = 0
-        X.append(x)
-
+        X_.append(x)
     #for chaves in (dict_train[j]).keys():
         #fields = chaves.split(" ")
         #word1_embed = words[fields[0]]
@@ -196,7 +196,7 @@ def get_all(words, tags, labels, dict_op):
         # print(dict_train[i][fields[0]+":"+fields[6]])
         # Y.append(np.array(dict_op[dict_train[i][fields[0]+":"+fields[6]]+"\n"]))
 
-    return X, Y
+    return X_, Y_
 
 
 def to_one_hot(arq):
@@ -289,6 +289,7 @@ parser_std = TransitionParser('arc-standard')
 
 # Treinamento do modelo
 model = pre_trainneural(parser_std)
+model.save_weights('./my_model.h5')
 
 retorno = parse(parser_std, model, "./corpus/test/portuguese_test.conll")
 
