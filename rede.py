@@ -11,6 +11,7 @@ from keras.layers.core import Dense, Activation, Dropout, Merge, Reshape
 from keras.layers.embeddings import Embedding
 from nltk.parse import DependencyGraph
 from parser import TransitionParser
+from keras.preprocessing import sequence
 
 
 def create_dict_inx(dictionary):
@@ -68,18 +69,19 @@ def pre_trainneural(parser_std):
 
 
     word_features = Sequential()
-    word_features.add(Embedding(input_dim=len(words.keys())+1, output_dim=50, input_shape=(len(words.keys()),),  mask_zero=True, weights=[w_weights]))
+    word_features.add(Embedding(input_dim=len(words.keys())+1,input_length=18, output_dim=50,  mask_zero=True, weights=[w_weights]))
 
     pos_features = Sequential()
-    pos_features.add(Embedding(input_dim=len(tags.keys())+1, output_dim=50, input_shape=(len(tags.keys()),), mask_zero=True, weights=[p_weights]))
+    pos_features.add(Embedding(input_dim=len(tags.keys())+1,input_length=18, output_dim=50, mask_zero=True, weights=[p_weights]))
 
     label_features = Sequential()
-    label_features.add(Embedding(input_dim=len(labels.keys())+1, output_dim=50, input_shape=(len(labels.keys()),),  mask_zero=True, weights=[l_weights]))
+    label_features.add(Embedding(input_dim=len(labels.keys())+1,input_length=12, output_dim=50,  mask_zero=True, weights=[l_weights]))
 
     model = Sequential()
-    model.add(Merge([word_features, pos_features, label_features], mode='concat'))
-    model.add(Reshape((len(labels.keys())+ len(tags.keys()) + len(words.keys()),)))
-    model.add(Dense(output_dim=200, input_dim=50 * 48, W_regularizer=l2(0.01)))
+
+    model.add(Merge([word_features, pos_features, label_features], mode='concat', concat_axis = 1))
+    model.add(Reshape((48*50,)))
+    model.add(Dense(output_dim=200, W_regularizer=l2(0.01)))
     model.add(Dropout(0.5))
 
     # To-do: Modelar a ativacao tripla X 3
@@ -98,9 +100,8 @@ def pre_trainneural(parser_std):
                 dict_op[key] = one_hot[0][element]
     #extract_training_data_arc_standard()
     X, Y = get_all(words_indx, tags_indx, labels_indx, dict_op)
-    X = np.array(X)
     Y = np.array(Y)
-    model.fit(X=X, y=Y, nb_epoch=nb_epoch, batch_size=batch_size)
+    model.fit(X=[np.array(X[0]), np.array(X[1]), np.array(X[2])], y=Y, nb_epoch=nb_epoch, batch_size=batch_size)
 
     return model
 
@@ -128,9 +129,9 @@ def Get_features_(list, dict):
 
 def get_all(words, tags, labels, dict_op):
     # this function get all configurations from the training files
-    i = 0
-    aux = 0
-    X_ = []
+    X_word = []
+    X_tags = []
+    X_label = []
     Y_ = []
 
     # Todo o conjunto de treinamento esta no arquivo input_file da forma Y [features_word] [features_pos] [features_label]
@@ -139,22 +140,13 @@ def get_all(words, tags, labels, dict_op):
     a = open("./corpus/temp/parc_test.pickl", 'rb')
     object = pickle.load(a)
     for element in object:
-        x = []
-        for l in element:
+        Y_.append(Get_features_fromop(element[0], dict_op))
+        X_word.append(np.array(Get_features_(element[1], words)))
+        X_tags.append(np.array(Get_features_(element[2], tags)))
+        X_label.append(np.array(Get_features_(element[3], labels)))
 
-            if i == 0:
-                Y_.append(Get_features_fromop(l, dict_op))
-                i += 1
-            else:
-                if i == 1:
-                    x.append(Get_features_(l, words))
-                if i == 2:
-                    x.append(Get_features_(l, tags))
-                if i == 3:
-                    x.append(Get_features_(l, labels))
-                i += 1
-        i = 0
-        X_.append(x)
+
+
     #for chaves in (dict_train[j]).keys():
         #fields = chaves.split(" ")
         #word1_embed = words[fields[0]]
@@ -196,7 +188,7 @@ def get_all(words, tags, labels, dict_op):
         # print(dict_train[i][fields[0]+":"+fields[6]])
         # Y.append(np.array(dict_op[dict_train[i][fields[0]+":"+fields[6]]+"\n"]))
 
-    return X_, Y_
+    return [X_word, X_tags, X_label], Y_
 
 
 def to_one_hot(arq):
