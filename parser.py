@@ -11,7 +11,9 @@ from __future__ import division
 from __future__ import print_function
 import numpy.ma as ma
 import copy
+import pickle
 from copy import deepcopy
+
 try:
     from numpy import array
     from scipy import sparse
@@ -19,7 +21,6 @@ except ImportError:
     pass
 
 from ParserI import ParserI
-
 
 
 class Configuration(object):
@@ -46,12 +47,12 @@ class Configuration(object):
         self.buffer = list(range(1, len(dep_graph.nodes)))  # The rest is in the buffer
         self.arcs = []  # empty set of arc
         self._tokens = copy.deepcopy(dep_graph.nodes)
-        self.n= len(dep_graph.nodes)
+        self.n = len(dep_graph.nodes)
         self._max_address = len(self.buffer)
 
     def __str__(self):
         return 'Stack : ' + \
-            str(self.stack) + '  Buffer : ' + str(self.buffer) + '   Arcs : ' + str(self.arcs)
+               str(self.stack) + '  Buffer : ' + str(self.buffer) + '   Arcs : ' + str(self.arcs)
 
     def _check_informative(self, feat, flag=False):
         """
@@ -70,8 +71,8 @@ class Configuration(object):
     def getLeftChild_(self, k, cnt):
         if (k < 0) or (k > self.n):
             return -1
-        i=1
-        c =0
+        i = 1
+        c = 0
         while (i < k):
             aux = self._tokens[i]
             if aux['head'] == k:
@@ -81,9 +82,8 @@ class Configuration(object):
             i += 1
         return -1
 
-    def getLeftChild (self, i):
+    def getLeftChild(self, i):
         return self.getLeftChild_(i, 1)
-
 
     def getRightChild_(self, k, cnt):
         if (k < 0) or (k > self.n):
@@ -99,49 +99,48 @@ class Configuration(object):
                     return i
             i -= 1
 
-
         return -1
-
 
     def getRightChild(self, i):
         return self.getRightChild_(i, 1)
 
-    def getWord(self,k):
+    def getWord(self, k):
         if k == 0:
-            return "-ROOT-"
+            return "ROOT"
         else:
             k -= 1
 
         if (k < 0) or (k >= len(self.buffer)):
-            return "-NULL-"
+            return "NULL"
         else:
             token = self._tokens[k]
-            return token['word']
+            if token['word'] is None:
+                return "NULL"
+            else:
+                return token['word']
 
-    def getPos(self,k):
+    def getPos(self, k):
         if k == 0:
-            return "-ROOT-"
+            return "ROOT"
         else:
             k -= 1
 
         if (k < 0) or (k >= len(self.buffer)):
-            return "-NULL-"
+            return "NULL"
         else:
             token = self._tokens[k]
-            return token['tag']
+            return token['ctag']
 
     def getLabel(self, k):
 
         if k <= 0 or k > self.n:
-            return "-NULL-"
+            return "NULL"
         token = self._tokens[k]
         return token['rel']
 
-
-
     def getStack(self, indice):
         n_stack = len(self.stack)
-        if indice >=0 and indice < n_stack:
+        if indice >= 0 and indice < n_stack:
             return self.stack[n_stack - 1 - indice]
         else:
             return -1
@@ -153,23 +152,20 @@ class Configuration(object):
         else:
             return -1
 
-
-
     def extract_features(self):
         """
         Extract the set of features for the current configuration. Implement standard features from original describe by Joakin Nivre.
         :return: 3 lists(str) from the features
         """
 
-        #Get word and PoS from stak
-        word_features   = []
-        pos_features    = []
-        label_features  = []
+        # Get word and PoS from stak
+        word_features = []
+        pos_features = []
+        label_features = []
         for i in reversed(range(0, 3)):
             stack_idx0 = self.getStack(i)
             word_features.append(self.getWord(stack_idx0))
             pos_features.append(self.getPos(stack_idx0))
-
 
         for i in range(0, 3):
             buffer_idx0 = self.getBuffer(i)
@@ -179,26 +175,25 @@ class Configuration(object):
         for i in range(0, 2):
             k = self.getStack(i)
 
-            #leftmost child
+            # leftmost child
             index = self.getLeftChild(k)
             word_features.append(self.getWord(index))
             pos_features.append(self.getPos(index))
             label_features.append(self.getLabel(index))
 
-
-            #rightmost child
+            # rightmost child
             index = self.getRightChild(k)
             word_features.append(self.getWord(index))
             pos_features.append(self.getPos(index))
             label_features.append(self.getLabel(index))
 
-            #second leftmost child
+            # second leftmost child
             index = self.getLeftChild_(k, 2)
             word_features.append(self.getWord(index))
             pos_features.append(self.getPos(index))
             label_features.append(self.getLabel(index))
 
-            #second rightmost child
+            # second rightmost child
             index = self.getRightChild_(k, 2)
             word_features.append(self.getWord(index))
             pos_features.append(self.getPos(index))
@@ -210,15 +205,12 @@ class Configuration(object):
             pos_features.append(self.getPos(index))
             label_features.append(self.getLabel(index))
 
-            #right rightmostchild
+            # right rightmostchild
             index = self.getRightChild(self.getRightChild(k))
             word_features.append(self.getWord(index))
             pos_features.append(self.getPos(index))
             label_features.append(self.getLabel(index))
 
-        print("tamanho word:", len(word_features))
-        print("tamanho pos:", len(pos_features))
-        print("tamanho label:", len(label_features))
         return word_features, pos_features, label_features
 
 
@@ -240,10 +232,10 @@ class Transition(object):
         """
         self._algo = alg_option
         if alg_option not in [
-                TransitionParser.ARC_STANDARD,
-                TransitionParser.ARC_EAGER]:
+            TransitionParser.ARC_STANDARD,
+            TransitionParser.ARC_EAGER]:
             raise ValueError(" Currently we only support %s and %s " %
-                                        (TransitionParser.ARC_STANDARD, TransitionParser.ARC_EAGER))
+                             (TransitionParser.ARC_STANDARD, TransitionParser.ARC_EAGER))
 
     def left_arc(self, conf, relation):
         """
@@ -326,7 +318,6 @@ class Transition(object):
 
 
 class TransitionParser(ParserI):
-
     """
     Class for transition based parser. Implement 2 algorithms which are "arc-standard" and "arc-eager"
     """
@@ -339,9 +330,9 @@ class TransitionParser(ParserI):
         :param algorithm: the algorithm option of this parser. Currently support `arc-standard` and `arc-eager` algorithm
         :type algorithm: str
         """
-        if not(algorithm in [self.ARC_STANDARD, self.ARC_EAGER]):
+        if not (algorithm in [self.ARC_STANDARD, self.ARC_EAGER]):
             raise ValueError(" Currently we only support %s and %s " %
-                                        (self.ARC_STANDARD, self.ARC_EAGER))
+                             (self.ARC_STANDARD, self.ARC_EAGER))
         self._algorithm = algorithm
 
         self._dictionary = {}
@@ -400,15 +391,16 @@ class TransitionParser(ParserI):
                             return False
         return True
 
-    def _write_to_file(self, key, w_features, t_features, l_features, input_file):
+    def _write_to_file(self, key, w_features, t_features, l_features):
         """
         write the binary features to input file and update the transition dictionary
         """
+
         self._transition.setdefault(key, len(self._transition) + 1)
         self._match_transition[self._transition[key]] = key
-        input_str = str(key) + ' ' + str(w_features)+" "+ str(t_features)+" "+str(l_features) + '\n'
 
-        input_file.write(input_str)
+        return key, w_features, t_features, l_features
+
     def _write_blenk_in_file(self, input_file):
         input_file.write("\n")
 
@@ -420,8 +412,6 @@ class TransitionParser(ParserI):
         operation = Transition(self.ARC_STANDARD)
         count_proj = 0
         training_seq = []
-        i = 0
-        training_seq.append(dict())
         for depgraph in depgraphs:
             if not self._is_projective(depgraph):
                 continue
@@ -432,7 +422,7 @@ class TransitionParser(ParserI):
             while len(conf.buffer) > 0:
                 b0 = conf.buffer[0]
                 (w_features, p_features, l_features) = conf.extract_features()
-                #binary_features = self._convert_to_binary_features(features)
+                # binary_features = self._convert_to_binary_features(features)
 
 
 
@@ -445,7 +435,7 @@ class TransitionParser(ParserI):
                     if rel is not None:
                         key = Transition.LEFT_ARC + ':' + rel
 
-                        self._write_to_file(key, w_features, p_features, l_features, input_file)
+                        training_seq.append(self._write_to_file(key, w_features, p_features, l_features))
                         operation.left_arc(conf, rel)
                         continue
 
@@ -466,16 +456,16 @@ class TransitionParser(ParserI):
 
                         if precondition:
                             key = Transition.RIGHT_ARC + ':' + rel
-                            self._write_to_file(key, w_features, p_features, l_features, input_file)
+                            training_seq.append(self._write_to_file(key, w_features, p_features, l_features))
                             operation.right_arc(conf, rel)
                             continue
 
                 # Shift operation as the default
                 key = Transition.SHIFT
-                self._write_to_file(key,w_features, p_features, l_features, input_file)
+                training_seq.append(self._write_to_file(key, w_features, p_features, l_features))
                 operation.shift(conf)
 
-        input_file.close()
+        pickle.dump(training_seq, input_file)
         print(" Number of training examples : " + str(len(depgraphs)))
         print(" Number of valid (projective) examples : " + str(count_proj))
 
@@ -498,8 +488,6 @@ class TransitionParser(ParserI):
                 b0 = conf.buffer[0]
                 features = conf.extract_features()
                 binary_features = self._convert_to_binary_features(features)
-
-
 
                 if len(conf.stack) > 0:
                     s0 = conf.stack[len(conf.stack) - 1]
@@ -564,17 +552,16 @@ class TransitionParser(ParserI):
 
                 if len(conf.stack) > 0:
 
-
-                    s0 = conf.stack[len(conf.stack)-1]
+                    s0 = conf.stack[len(conf.stack) - 1]
                     w1_new = (dictnionary_graph[s0])["word"]
                     pos = (dictnionary_graph[s0])["ctag"]
                     label = (dictnionary_graph[s0])["rel"]
                     w2_new = (dictnionary_graph[b0])["word"]
                     # It's best to use decision function as follow BUT it's not supported yet for sparse SVM
                     # Using decision funcion to build the votes array
-                    #dec_func = model.decision_function(x_test)[0]
-                    #votes = {}
-                    #k = 0
+                    # dec_func = model.decision_function(x_test)[0]
+                    # votes = {}
+                    # k = 0
                     # for i in range(len(model.classes_)):
                     #    for j in range(i+1, len(model.classes_)):
                     #        #if  dec_func[k] > 0:
@@ -585,9 +572,9 @@ class TransitionParser(ParserI):
                     #           votes[j] +=1
                     #        k +=1
                     # Sort votes according to the values
-                    #sorted_votes = sorted(votes.items(), key=itemgetter(1), reverse=True)
+                    # sorted_votes = sorted(votes.items(), key=itemgetter(1), reverse=True)
 
-                    #extract the right X configuration
+                    # extract the right X configuration
                     w1 = words[str(w1_new)]
                     w2 = words[str(w2_new)]
                     pos1 = tags[pos]
@@ -603,7 +590,7 @@ class TransitionParser(ParserI):
 
                     # Note that SHIFT is always a valid operation
 
-                    #pegar o y correto key?
+                    # pegar o y correto key?
                     baseTransition = strTransition.split(":")[0]
 
                     if baseTransition == Transition.LEFT_ARC:
@@ -618,9 +605,6 @@ class TransitionParser(ParserI):
                     elif baseTransition == Transition.SHIFT:
                         if operation.shift(conf) != -1:
                             break
-
-
-
 
                 operation.shift(conf)
 
