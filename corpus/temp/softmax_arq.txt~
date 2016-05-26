@@ -1,79 +1,70 @@
-LEFTARC:nmod
-LEFTARC:None
-LEFTARC:adpmod
-LEFTARC:det
-LEFTARC:cc
-LEFTARC:dep
-LEFTARC:advmod
-LEFTARC:adp
-LEFTARC:nsubj
-LEFTARC:p
-LEFTARC:csubjpass
-LEFTARC:iobj
+LEFTARC:acl
 LEFTARC:advcl
-LEFTARC:prt
-LEFTARC:csubj
-LEFTARC:mark
-LEFTARC:auxpass
-LEFTARC:adpcomp
-LEFTARC:parataxis
-LEFTARC:appos
-LEFTARC:poss
-LEFTARC:mwe
+LEFTARC:advmod
 LEFTARC:amod
+LEFTARC:appos
 LEFTARC:aux
-LEFTARC:infmod
-LEFTARC:ROOT
-LEFTARC:conj
-LEFTARC:neg
-LEFTARC:xcomp
-LEFTARC:attr
-LEFTARC:compmod
-LEFTARC:partmod
-LEFTARC:rcmod
+LEFTARC:auxpass
+LEFTARC:case
+LEFTARC:cc
 LEFTARC:ccomp
-LEFTARC:num
+LEFTARC:compound
+LEFTARC:conj
+LEFTARC:cop
+LEFTARC:csubj
+LEFTARC:csubjpass
+LEFTARC:dep
+LEFTARC:det
+LEFTARC:discourse
+LEFTARC:dislocated
 LEFTARC:dobj
-LEFTARC:acomp
-LEFTARC:adpobj
-LEFTARC:nsubjpass
-RIGHTARC:nmod
-RIGHTARC:adpmod
-RIGHTARC:det
-RIGHTARC:None
-RIGHTARC:cc
-RIGHTARC:dep
-RIGHTARC:advmod
-RIGHTARC:adp
-RIGHTARC:nsubj
-RIGHTARC:p
-RIGHTARC:csubjpass
-RIGHTARC:iobj
+LEFTARC:expl
+LEFTARC:foreign
+LEFTARC:goeswith
+LEFTARC:iobj
+LEFTARC:list
+LEFTARC:mark
+RIGHTARC:acl
 RIGHTARC:advcl
-RIGHTARC:prt
-RIGHTARC:csubj
-RIGHTARC:mark
-RIGHTARC:auxpass
-RIGHTARC:adpcomp
-RIGHTARC:parataxis
-RIGHTARC:appos
-RIGHTARC:poss
-RIGHTARC:mwe
+RIGHTARC:advmod
 RIGHTARC:amod
+RIGHTARC:appos
 RIGHTARC:aux
-RIGHTARC:infmod
-RIGHTARC:ROOT
-RIGHTARC:conj
-RIGHTARC:neg
-RIGHTARC:xcomp
-RIGHTARC:attr
-RIGHTARC:compmod
-RIGHTARC:partmod
-RIGHTARC:rcmod
+RIGHTARC:auxpass
+RIGHTARC:case
+RIGHTARC:cc
 RIGHTARC:ccomp
-RIGHTARC:num
+RIGHTARC:compound
+RIGHTARC:conj
+RIGHTARC:cop
+RIGHTARC:csubj
+RIGHTARC:csubjpass
+RIGHTARC:dep
+RIGHTARC:det
+RIGHTARC:discourse
+RIGHTARC:dislocated
 RIGHTARC:dobj
-RIGHTARC:acomp
-RIGHTARC:adpobj
-RIGHTARC:nsubjpass
-SHIFT
+RIGHTARC:expl
+RIGHTARC:foreign
+RIGHTARC:goeswith
+RIGHTARC:iobj
+RIGHTARC:list
+RIGHTARC:mark
+
+
+mark: marker
+mwe: multi-word expression
+name: name
+neg: negation modifier
+nmod: nominal modifier
+nsubj: nominal subject
+nsubjpass: passive nominal subject
+nummod: numeric modifier
+parataxis: parataxis
+punct: punctuation
+remnant: remnant in ellipsis
+reparandum: overridden disfluency
+root: root
+vocative: vocative
+xcomp: open clausal complement
+© 2014 Universal Dependencies contributors. Site powered by Annodoc and brat

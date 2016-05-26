@@ -1,0 +1,49 @@
+# this file take a corpus in universal dependency form, and extract all the possible tokens.
+# Then search in the files representations (Word2vec from), then filter thgis files (less memory)
+# out = the final word2vec from the tokens representations
+import os
+from nltk.parse import DependencyGraph
+from parser import TransitionParser
+from Limpar_corpus import DependencyReader
+def remove_heads(path):
+    arquivo = open(path, "r")
+    arquivo2 = open(path+"2", "w")
+    for line in arquivo:
+        if not (line[0] == "#" or line == "\n"):
+           arquivo2.write(line)
+        if line == "\n":
+           arquivo2.write("\n")
+    arquivo2.close()
+    os.remove(arquivo.name)
+    os.rename(arquivo2.name, (arquivo2.name).replace("2", ""))
+
+
+def clean_corpus(path, parser_std):
+    arquivo = open(path)
+    a = arquivo.read()
+    new_training_data = open(path + "1", "w")
+    graphs = [DependencyGraph(entry) for entry in a.split('\n\n') if entry]
+    for depgraph in graphs:
+        if parser_std._is_projective(depgraph):
+            new_training_data.write(depgraph.to_conll(style=10) + "\n")
+
+    os.remove(arquivo.name)
+    new_training_data.close()
+    os.rename(new_training_data.name, (new_training_data.name).replace("1", ""))
+    new_training_data.close()
+
+
+
+parser_std = TransitionParser('arc-standard')
+dirs = [os.listdir("./corpus/test"), os.listdir("./corpus/train")]
+
+for file in dirs:
+    if "test" in file[0]:
+        remove_heads("./corpus/test/" + file[0])
+        clean_corpus("./corpus/test/" + file[0], parser_std)
+    else:
+        remove_heads("./corpus/train/" + file[0])
+        clean_corpus("./corpus/train/" + file[0], parser_std)
+
+#a = DependencyReader()
+#a.load("spanish")

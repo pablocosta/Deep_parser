@@ -9,11 +9,9 @@ from keras.models import Sequential
 from keras.regularizers import l2
 from keras.layers.core import Dense, Activation, Dropout, Merge, Reshape
 from keras.layers.embeddings import Embedding
-from nltk.parse import DependencyGraph
+from nltk.parse import DependencyGraph, DependencyEvaluator
 from parser import TransitionParser
-from keras.preprocessing import sequence
-
-
+from load_model import Model
 def create_dict_inx(dictionary):
     return_dict = dict()
     i = 0
@@ -36,8 +34,8 @@ def pre_trainneural(parser_std):
     # w2v_pos = Word2Vec.load_from_w2v_file()
     # w2v_label = Word2Vec.load_from_w2v_file()
     # Para metros do treinameto
-    batch_size = 128
-    nb_epoch = 1
+    batch_size = 10000
+    nb_epoch = 20000
 
     """ TO-DO
         fazer funcao X^3
@@ -56,7 +54,9 @@ def pre_trainneural(parser_std):
         else:
             clean_corpus("./corpus/train/" + file[0], parser_std)
 
-    output_dim = 77
+
+    make_softmax_arq(labels)
+    output_dim = len(labels.keys())*2 + 1
 
     # create dictionary for the index
     words_indx = create_dict_inx(words)
@@ -81,7 +81,7 @@ def pre_trainneural(parser_std):
 
     model.add(Merge([word_features, pos_features, label_features], mode='concat', concat_axis = 1))
     model.add(Reshape((48*50,)))
-    model.add(Dense(output_dim=200, W_regularizer=l2(0.01)))
+    model.add(Dense(output_dim=200, W_regularizer=l2(1e-8)))
     model.add(Dropout(0.5))
 
     # To-do: Modelar a ativacao tripla X 3
@@ -93,15 +93,18 @@ def pre_trainneural(parser_std):
     # Extract one-hot repersentations
 
     (dict_op, one_hot) = to_one_hot(open("./corpus/temp/softmax_arq.txt"))
+    save_dict(dict_op)
     dict_opaux = copy.deepcopy(dict_op)
     for element in range(0, len(one_hot[0])):
         for key in dict_op.keys():
             if dict_opaux[key] == element:
                 dict_op[key] = one_hot[0][element]
-    #extract_training_data_arc_standard()
+
+
+    extract_training_data_arc_standard(parser_std)
     X, Y = get_all(words_indx, tags_indx, labels_indx, dict_op)
     Y = np.array(Y)
-    model.fit(X=[np.array(X[0]), np.array(X[1]), np.array(X[2])], y=Y, nb_epoch=nb_epoch, batch_size=batch_size)
+    model.fit(X=[np.array(X[0]), np.array(X[1]), np.array(X[2])], y=Y, nb_epoch=nb_epoch, validation_split=0.1, batch_size=batch_size)
 
     return model
 
@@ -117,6 +120,15 @@ def Load_embedding_file(file_embedding_model):
     arquivo.close()
     return embeddings
 
+def save_dict(dict):
+    input_file = open("./corpus/temp/dict_onehot.pickl", "wb")
+    pickle.dump(dict, input_file)
+
+def load_dict():
+    a = open("./corpus/temp/dict_onehot.pickl", 'rb')
+    object = pickle.load(a)
+
+    return object
 def Get_features_fromop(list_fatures, dict_op):
 
     return np.array(dict_op[list_fatures])
@@ -234,12 +246,11 @@ def id_tensor_to_one_hot_tensor(tensor_2d, one_hot_dim=None):
     return tensor_3d
 
 
-def extract_training_data_arc_standard():
+def extract_training_data_arc_standard(parser_std):
     arquivo = open("./corpus/train/portuguese_train.conll", "r")
     a = arquivo.read()
     graphs = [DependencyGraph(entry) for entry in a.split('\n\n') if entry]
     input_file = open("./corpus/temp/parc_test.pickl", "wb")
-    parser_std = TransitionParser('arc-standard')
     parser_std._create_training_examples_arc_std(graphs, input_file)
     arquivo.close()
     input_file.close()
@@ -269,7 +280,7 @@ def parse(parser_std, model, path_test):
     words = Load_embedding_file("word.txt")
     tags = Load_embedding_file("pos.txt")
     labels = Load_embedding_file("label.txt")
-    (dict_op, one_hot) = to_one_hot(open("./corpus/temp/softmax_arq.txt"))
+    dict_op = load_dict()
 
     set_parser = parser_std.parse(graphs, model, words, tags, labels, dict_op)
 
@@ -281,11 +292,8 @@ parser_std = TransitionParser('arc-standard')
 
 # Treinamento do modelo
 model = pre_trainneural(parser_std)
-model.save_weights('./my_model.h5')
+model.save_weights('./my_model.h5', overwrite=True)
 
-retorno = parse(parser_std, model, "./corpus/test/portuguese_test.conll")
-
-arq = open("./retorno_parser.txt", "w")
-for graph in retorno:
-    arq.write(graph.to_conll(style=10))
-arq.close()
+model_ = Model(model, "./corpus/test/portuguese_test.conll", "./my_model.h5", parser_std)
+model_.parse_language()
+model_.evaluate_parser()

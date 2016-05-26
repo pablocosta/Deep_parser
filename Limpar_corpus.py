@@ -35,7 +35,7 @@ class DependencyReader():
         self.train_instances = []
         self.test_instances = []
         base_deppars_dir = path.join(path.dirname(__file__),"corpus")
-        languages = ["danish","dutch","portuguese","english"]
+        languages = ["danish","dutch","portuguese","english","spanish"]
         i = 0
         word_dict = {}
         pos_dict = {}

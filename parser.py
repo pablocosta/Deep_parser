@@ -9,7 +9,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import numpy.ma as ma
 import copy
 import pickle
 from copy import deepcopy
@@ -532,6 +531,9 @@ class TransitionParser(ParserI):
         print(" Number of training examples : " + str(len(depgraphs)))
         print(" Number of valid (projective) examples : " + str(countProj))
         return training_seq
+    def Get_features_(self, list, dict):
+
+        return [dict[l] for l in list]
 
     def parse(self, depgraphs, model, words, tags, labels, dict_op):
         """
@@ -551,12 +553,6 @@ class TransitionParser(ParserI):
                 b0 = conf.buffer[0]
 
                 if len(conf.stack) > 0:
-
-                    s0 = conf.stack[len(conf.stack) - 1]
-                    w1_new = (dictnionary_graph[s0])["word"]
-                    pos = (dictnionary_graph[s0])["ctag"]
-                    label = (dictnionary_graph[s0])["rel"]
-                    w2_new = (dictnionary_graph[b0])["word"]
                     # It's best to use decision function as follow BUT it's not supported yet for sparse SVM
                     # Using decision funcion to build the votes array
                     # dec_func = model.decision_function(x_test)[0]
@@ -575,39 +571,34 @@ class TransitionParser(ParserI):
                     # sorted_votes = sorted(votes.items(), key=itemgetter(1), reverse=True)
 
                     # extract the right X configuration
-                    w1 = words[str(w1_new)]
-                    w2 = words[str(w2_new)]
-                    pos1 = tags[pos]
-                    label1 = labels[str(label)]
 
-                    concat = array([ma.concatenate([w1, w2, pos1, label1])])
-
-                    y_pred_model = model.predict_classes(concat)
+                    (word_features, pos_features, label_features) = conf.extract_features()
+                    y_pred_model = model.predict_classes(X=[array([self.Get_features_(word_features,words)
+                                                                  ]), array([self.Get_features_(pos_features,tags)]
+                                                                            ), array([self.Get_features_(label_features, labels)]
+                                                                                     )])
 
                     for key in dict_op.keys():
                         if dict_op[key] == y_pred_model[0]:
                             strTransition = key
-
                     # Note that SHIFT is always a valid operation
+                    if strTransition in self._match_transition.values():
+                        baseTransition = strTransition.split(":")[0]
 
-                    # pegar o y correto key?
-                    baseTransition = strTransition.split(":")[0]
-
-                    if baseTransition == Transition.LEFT_ARC:
-                        if operation.left_arc(conf, strTransition.split(":")[1]) != -1:
-                            break
-                    elif baseTransition == Transition.RIGHT_ARC:
-                        if operation.right_arc(conf, strTransition.split(":")[1]) != -1:
-                            break
-                    elif baseTransition == Transition.REDUCE:
-                        if operation.reduce(conf) != -1:
-                            break
-                    elif baseTransition == Transition.SHIFT:
-                        if operation.shift(conf) != -1:
-                            break
-
-                operation.shift(conf)
-
+                        if baseTransition == Transition.LEFT_ARC:
+                            if operation.left_arc(conf, strTransition.split(":")[1]) != -1:
+                                break
+                        elif baseTransition == Transition.RIGHT_ARC:
+                            if operation.right_arc(conf, strTransition.split(":")[1]) != -1:
+                                break
+                        elif baseTransition == Transition.REDUCE:
+                            if operation.reduce(conf) != -1:
+                                break
+                        elif baseTransition == Transition.SHIFT:
+                            if operation.shift(conf) != -1:
+                                break
+                    else:
+                        raise ValueError("The predicted transition is not recognized, expected errors")
             # Finish with operations build the dependency graph from Conf.arcs
 
             new_depgraph = deepcopy(depgraph)
