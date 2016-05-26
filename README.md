@@ -8,147 +8,20 @@ Comando para rodar:
 python3.4 rede.py
 
 versao do keras = 0.2
+-------------------------
 
-O código das features foi inspirado na implementação de https://github.com/jiangfeng1124/acl15-clnndep
-e é este:
+Para rodar para uma linguagem é necessária a seguinte configuração....
 
+Arquivos teste e train para a lingua alvo nos respectivos diretórios ./corpus/teste e ./corpus/train.... Como o no exemplo.
 
-	for (int i = 2; i >= 0; --i)
-	    {
-		int index = c.get_stack(i);
-		f_word.push_back(get_word_id(c.get_word(index)));
-		f_pos.push_back(get_pos_id(c.get_pos(index)));
-	    }
-
-	    for (int i = 0; i <= 2; ++i)
-	    {
-		int index = c.get_buffer(i);
-		f_word.push_back(get_word_id(c.get_word(index)));
-		f_pos.push_back(get_pos_id(c.get_pos(index)));
-	   
-	    }
-
-	    for (int i = 0; i <= 1; ++i)
-	    {
-		int k = c.get_stack(i);
-
-		int index = c.get_left_child(k);
-		f_word.push_back(get_word_id(c.get_word(index)));
-		f_pos.push_back(get_pos_id(c.get_pos(index)));
-		f_label.push_back(get_label_id(c.get_label(index)));
-	   
-		index = c.get_right_child(k);
-		f_word.push_back(get_word_id(c.get_word(index)));
-		f_pos.push_back(get_pos_id(c.get_pos(index)));
-		f_label.push_back(get_label_id(c.get_label(index)));
-	   
-		index = c.get_left_child(k, 2);
-		f_word.push_back(get_word_id(c.get_word(index)));
-		f_pos.push_back(get_pos_id(c.get_pos(index)));
-		f_label.push_back(get_label_id(c.get_label(index)));
-	   
-		index = c.get_right_child(k, 2);
-		f_word.push_back(get_word_id(c.get_word(index)));
-		f_pos.push_back(get_pos_id(c.get_pos(index)));
-		f_label.push_back(get_label_id(c.get_label(index)));
-	   
-		index = c.get_left_child(c.get_left_child(k));
-		f_word.push_back(get_word_id(c.get_word(index)));
-		f_pos.push_back(get_pos_id(c.get_pos(index)));
-		f_label.push_back(get_label_id(c.get_label(index)));
-	   
-		index = c.get_right_child(c.get_right_child(k));
-		f_word.push_back(get_word_id(c.get_word(index)));
-		f_pos.push_back(get_pos_id(c.get_pos(index)));
-		f_label.push_back(get_label_id(c.get_label(index)));
-	    }
-Agora vou por as sub-funcoes:
+No embeddings deve conter os arquivos word.txt, pos.txt e label.txt. Estes são vetores na forma wor2vec de todos os tokens possíveis no conjunto de treinamento e teste. O arquivo "pre_process.py" tolkeniza nos três arquivos acima citados. Após isso só rodar "chamada.py" para cada um dos três arquivos de tokens gerados. Esses arquivos são gerados para os córpus presentes em ./corpus/teste e ./corpus/train. Recomendo fazer uma língua por vez.
 
 
+O arquivo "load_model.py" pode carregar um modelo já treinado e "parsear". Em breve ele será resposável por todo o treino e teste. Atualmente ele não treina, por isso o arquivo "rede.py".
 
+Para mudar a língua além do dito anteriormente... é necessário mudar alguns caminhos fixos em arquivos chave como "rede.py" e "load_model.py".
 
+por exemplo no arquivo rede.py:
 
-string Configuration::get_word(int k)
-{
-    if (k == 0)
-        return Config::ROOT;
-    else
-        -- k;
-
-    return (k < 0 || k >= sent.n)
-                ? Config::NIL
-                : sent.words[k];
-}
-
-/**
- * k starts from 0 (root)
- */
-
-string Configuration::get_pos(int k)
-{
-    if (k == 0)
-        return Config::ROOT;
-    else
-        -- k;
-
-    return (k < 0 || k >= sent.n)
-                ? Config::NIL
-                : sent.poss[k];
-}
-
-
-
-const string & Configuration::get_label(int k)
-{
-    return tree.get_label(k);
-}
-
-const string & DependencyTree::get_label(int k)
-{
-    if (k <= 0 || k > n)
-        return Config::NIL;
-    return labels[k];
-}
-
-
-int Configuration::get_left_child(int k, int cnt)
-{
-    if (k < 0 || k > tree.n)
-        return Config::NONEXIST;
-
-    int c = 0;
-    for (int i = 1; i < k; ++i)
-        if (tree.get_head(i) == k)
-            if ((++c) == cnt)
-                return i;
-    return Config::NONEXIST;
-}
-
-int Configuration::get_left_child(int k)
-{
-    return get_left_child(k, 1);
-}
-
-int Configuration::get_right_child(int k, int cnt)
-{
-    if (k < 0 || k > tree.n)
-        return Config::NONEXIST;
-
-    int c = 0;
-    for (int i = tree.n; i > k; --i)
-        if (tree.get_head(i) == k)
-            if ((++c) == cnt)
-                return i;
-    return Config::NONEXIST;
-}
-
-int Configuration::get_right_child(int k)
-{
-    return get_right_child(k, 1);
-}
-
-
-
-
-
+	Model(model, "local do córpus de teste", "nome do arquivo de modelo salvo", parser_std)
 
