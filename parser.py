@@ -552,53 +552,48 @@ class TransitionParser(ParserI):
             while len(conf.buffer) > 0:
                 b0 = conf.buffer[0]
 
-                if len(conf.stack) > 0:
-                    # It's best to use decision function as follow BUT it's not supported yet for sparse SVM
-                    # Using decision funcion to build the votes array
-                    # dec_func = model.decision_function(x_test)[0]
-                    # votes = {}
-                    # k = 0
-                    # for i in range(len(model.classes_)):
-                    #    for j in range(i+1, len(model.classes_)):
-                    #        #if  dec_func[k] > 0:
-                    #            votes.setdefault(i,0)
-                    #            votes[i] +=1
-                    #        else:
-                    #           votes.setdefault(j,0)
-                    #           votes[j] +=1
-                    #        k +=1
-                    # Sort votes according to the values
-                    # sorted_votes = sorted(votes.items(), key=itemgetter(1), reverse=True)
+                # It's best to use decision function as follow BUT it's not supported yet for sparse SVM
+                # Using decision funcion to build the votes array
+                # dec_func = model.decision_function(x_test)[0]
+                # votes = {}
+                # k = 0
+                # for i in range(len(model.classes_)):
+                #    for j in range(i+1, len(model.classes_)):
+                #        #if  dec_func[k] > 0:
+                #            votes.setdefault(i,0)
+                #            votes[i] +=1
+                #        else:
+                #           votes.setdefault(j,0)
+                #           votes[j] +=1
+                #        k +=1
+                # Sort votes according to the values
+                # sorted_votes = sorted(votes.items(), key=itemgetter(1), reverse=True)
 
-                    # extract the right X configuration
+                # extract the right X
 
-                    (word_features, pos_features, label_features) = conf.extract_features()
-                    y_pred_model = model.predict_classes(X=[array([self.Get_features_(word_features,words)
-                                                                  ]), array([self.Get_features_(pos_features,tags)]
-                                                                            ), array([self.Get_features_(label_features, labels)]
-                                                                                     )])
+                (word_features, pos_features, label_features) = conf.extract_features()
+                y_pred_model = model.predict_classes(X=[array([self.Get_features_(word_features,words)
+                                                              ]), array([self.Get_features_(pos_features,tags)]
+                                                                        ), array([self.Get_features_(label_features, labels)]
+                                                                                 )])
+                for key in dict_op.keys():
+                    if dict_op[key] == y_pred_model[0]:
+                        strTransition = key
+                # Note that SHIFT is always a valid operation
+                if strTransition in self._match_transition.values():
+                    baseTransition = strTransition.split(":")[0]
+                    if baseTransition == Transition.LEFT_ARC:
+                        operation.left_arc(conf, strTransition.split(":")[1])
+                    elif baseTransition == Transition.RIGHT_ARC:
+                        operation.right_arc(conf, strTransition.split(":")[1])
+                    elif baseTransition == Transition.REDUCE:
+                        operation.reduce(conf)
+                    elif baseTransition == Transition.SHIFT:
+                        operation.shift(conf)
+                else:
+                    raise ValueError("The predicted transition is not recognized, expected errors")
 
-                    for key in dict_op.keys():
-                        if dict_op[key] == y_pred_model[0]:
-                            strTransition = key
-                    # Note that SHIFT is always a valid operation
-                    if strTransition in self._match_transition.values():
-                        baseTransition = strTransition.split(":")[0]
-
-                        if baseTransition == Transition.LEFT_ARC:
-                            if operation.left_arc(conf, strTransition.split(":")[1]) != -1:
-                                break
-                        elif baseTransition == Transition.RIGHT_ARC:
-                            if operation.right_arc(conf, strTransition.split(":")[1]) != -1:
-                                break
-                        elif baseTransition == Transition.REDUCE:
-                            if operation.reduce(conf) != -1:
-                                break
-                        elif baseTransition == Transition.SHIFT:
-                            if operation.shift(conf) != -1:
-                                break
-                    else:
-                        raise ValueError("The predicted transition is not recognized, expected errors")
+                print(conf)
             # Finish with operations build the dependency graph from Conf.arcs
 
             new_depgraph = deepcopy(depgraph)

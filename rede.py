@@ -1,6 +1,5 @@
 import keras
 import numpy as np
-import numpy.ma as ma
 import os
 import copy
 import pickle
@@ -9,8 +8,9 @@ from keras.models import Sequential
 from keras.regularizers import l2
 from keras.layers.core import Dense, Activation, Dropout, Merge, Reshape
 from keras.layers.embeddings import Embedding
-from nltk.parse import DependencyGraph, DependencyEvaluator
+from nltk.parse import DependencyGraph
 from parser import TransitionParser
+from sklearn.metrics import recall_score, precision_score
 from load_model import Model
 def create_dict_inx(dictionary):
     return_dict = dict()
@@ -35,7 +35,7 @@ def pre_trainneural(parser_std):
     # w2v_label = Word2Vec.load_from_w2v_file()
     # Para metros do treinameto
     batch_size = 10000
-    nb_epoch = 20000
+    nb_epoch = 2
 
     """ TO-DO
         fazer funcao X^3
@@ -272,6 +272,7 @@ def clean_corpus(path, parser_std):
     new_training_data.close()
 
 
+
 def parse(parser_std, model, path_test):
     # carrega gold
     arquivo = open(path_test)
@@ -285,6 +286,12 @@ def parse(parser_std, model, path_test):
     set_parser = parser_std.parse(graphs, model, words, tags, labels, dict_op)
 
     return set_parser
+
+def f_measure(Y_pred, Y):
+    r = recall_score(Y_pred, Y, average="macro")
+    p = precision_score(Y_pred, Y, average="macro")
+    f = 2 * (p * r) / (p + r)
+    return f
 
 
 # carrega analisador

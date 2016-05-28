@@ -66,7 +66,6 @@ class Model():
             i += 1
         return return_dict
     def evaluate_parser(self):
-
         arquivo = open(self.test_data)
         a = arquivo.read()
         gold_sent = [DependencyGraph(entry) for entry in a.split('\n\n') if entry]
