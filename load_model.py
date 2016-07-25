@@ -6,7 +6,8 @@ from keras.models import Sequential
 from keras.regularizers import l2
 from keras.layers.core import Dense, Activation, Dropout, Merge, Reshape
 from keras.layers.embeddings import Embedding
-from nltk.parse import DependencyGraph, DependencyEvaluator
+from nltk.parse import DependencyEvaluator
+from DepedencyTree import ReadTrees
 from parser import TransitionParser
 import pickle
 
@@ -19,19 +20,17 @@ class Model():
         self.test_data = test_data
         self.predicted = []
         self.parser = parser
+
         if model is not None:
             self.model = model
 
         else:
-
             self.caminho = caminho
 
             self.words = self.Load_embedding_file("word.txt")
             self.tags = self.Load_embedding_file("pos.txt")
             self.labels = self.Load_embedding_file("label.txt")
-
-            self.output_dim = 77
-
+            output_dim = len(self.labels.keys())*2 + 1
 
             word_features = Sequential()
             word_features.add(Embedding(input_dim=len(self.words.keys())+1,input_length=18, output_dim=50,  mask_zero=True))
@@ -42,21 +41,21 @@ class Model():
             label_features = Sequential()
             label_features.add(Embedding(input_dim=len(self.labels.keys())+1,input_length=12, output_dim=50,  mask_zero=True))
 
-            self.model = Sequential()
+            model = Sequential()
 
-            self.model.add(Merge([word_features, pos_features, label_features], mode='concat', concat_axis = 1))
-            self.model.add(Reshape((48*50,)))
-            self.model.add(Dense(output_dim=200, W_regularizer=l2(0.01)))
-            self.model.add(Dropout(0.5))
+            model.add(Merge([word_features, pos_features, label_features], mode='concat', concat_axis = 1))
+            model.add(Reshape((48*50,)))
+            model.add(Dense(output_dim=400, W_regularizer=l2(1e-8)))
+            model.add(Dropout(0.5))
 
             # To-do: Modelar a ativacao tripla X 3
-            self.model.add(Activation("tanh"))
-            self.model.add(Dense(output_dim=self.output_dim, input_dim=200))
-            self.model.add(Activation('softmax'))
+            model.add(Activation("tanh"))
+            model.add(Dense(output_dim=output_dim, input_dim=400))
+            model.add(Activation('softmax'))
             adagrad = keras.optimizers.Adagrad(lr=0.01, epsilon=1e-6)
-            self.model.compile(loss='categorical_crossentropy', optimizer=adagrad)
-            parser_std = TransitionParser('arc-standard')
-            self.parser = self.extract_training_data_arc_standard(parser_std)
+            model.compile(loss='categorical_crossentropy', optimizer=adagrad)
+            self.model = model
+            self.parser = self.extract_training_data_arc_standard(self.parser)
 
     def create_dict_inx(self, dictionary):
         return_dict = dict()
@@ -134,9 +133,8 @@ class Model():
 
     def parse(self, parser_std, model, path_test):
         # carrega gold
-        arquivo = open(path_test)
-        a = arquivo.read()
-        graphs = [DependencyGraph(entry) for entry in a.split('\n\n') if entry]
+        trees = ReadTrees(path_test)
+        tr,se = trees.load_corpus()
         words = self.Load_embedding_file("word.txt")
         tags = self.Load_embedding_file("pos.txt")
         labels = self.Load_embedding_file("label.txt")
@@ -145,7 +143,7 @@ class Model():
         tags_indx = self.create_dict_inx(tags)
         labels_indx = self.create_dict_inx(labels)
 
-        set_parser = parser_std.parse(graphs, model, words_indx, tags_indx, labels_indx, dict_op)
+        set_parser = parser_std.parse(se, tr, model, words_indx, tags_indx, labels_indx, dict_op)
 
         return set_parser
 
@@ -153,12 +151,10 @@ class Model():
         self.model.load_weights(self.caminho)
 
     def extract_training_data_arc_standard(self, parser_std):
-        arquivo = open("./corpus/train/portuguese_train.conll", "r")
-        a = arquivo.read()
-        graphs = [DependencyGraph(entry) for entry in a.split('\n\n') if entry]
+        trees = ReadTrees("./corpus/train/portuguese_train.conll")
+        tr,se = trees.load_corpus()
         input_file = open("./corpus/temp/parc_test.pickl", "wb")
-        parser_std._create_training_examples_arc_std(graphs, input_file)
-        arquivo.close()
+        parser_std._create_training_examples_arc_std(se, tr, input_file)
         input_file.close()
         return parser_std
 
