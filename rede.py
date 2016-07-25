@@ -8,10 +8,13 @@ from keras.models import Sequential
 from keras.regularizers import l2
 from keras.layers.core import Dense, Activation, Dropout, Merge, Reshape
 from keras.layers.embeddings import Embedding
-from nltk.parse import DependencyGraph
 from parser import TransitionParser
 from sklearn.metrics import recall_score, precision_score
 from load_model import Model
+from DepedencyTree import ReadTrees
+
+
+
 def create_dict_inx(dictionary):
     return_dict = dict()
     i = 0
@@ -35,7 +38,7 @@ def pre_trainneural(parser_std):
     # w2v_label = Word2Vec.load_from_w2v_file()
     # Para metros do treinameto
     batch_size = 10000
-    nb_epoch = 2
+    nb_epoch = 100
 
     """ TO-DO
         fazer funcao X^3
@@ -44,19 +47,13 @@ def pre_trainneural(parser_std):
     words = Load_embedding_file("word.txt")
     tags = Load_embedding_file("pos.txt")
     labels = Load_embedding_file("label.txt")
-    # make_softmax_arq(labels)
+    #make_softmax_arq(labels)
 
     dirs = [os.listdir("./corpus/test"), os.listdir("./corpus/train")]
 
-    for file in dirs:
-        if "test" in file[0]:
-            clean_corpus("./corpus/test/" + file[0], parser_std)
-        else:
-            clean_corpus("./corpus/train/" + file[0], parser_std)
-
 
     make_softmax_arq(labels)
-    output_dim = len(labels.keys())*2 + 1
+    output_dim = (len(labels.keys())-1)*2 + 1
 
     # create dictionary for the index
     words_indx = create_dict_inx(words)
@@ -81,11 +78,11 @@ def pre_trainneural(parser_std):
 
     model.add(Merge([word_features, pos_features, label_features], mode='concat', concat_axis = 1))
     model.add(Reshape((48*50,)))
-    model.add(Dense(output_dim=200, W_regularizer=l2(1e-8)))
-    model.add(Dropout(0.5))
-
+    model.add(Dropout((0.5)))
+    model.add(Dense(output_dim=200, activation="relu",W_regularizer=l2(1e-6)))
+    model.add(Dense(output_dim=200, input_dim=200, activation="relu",W_regularizer=l2(1e-6)))
     # To-do: Modelar a ativacao tripla X 3
-    model.add(Activation("tanh"))
+    
     model.add(Dense(output_dim=output_dim, input_dim=200))
     model.add(Activation('softmax'))
     adagrad = keras.optimizers.Adagrad(lr=0.01, epsilon=1e-6)
@@ -104,7 +101,7 @@ def pre_trainneural(parser_std):
     extract_training_data_arc_standard(parser_std)
     X, Y = get_all(words_indx, tags_indx, labels_indx, dict_op)
     Y = np.array(Y)
-    model.fit(X=[np.array(X[0]), np.array(X[1]), np.array(X[2])], y=Y, nb_epoch=nb_epoch, validation_split=0.1, batch_size=batch_size)
+    model.fit(X=[np.array(X[0]), np.array(X[1]), np.array(X[2])], y=Y, nb_epoch=nb_epoch,batch_size=batch_size,validation_split=0.1)
 
     return model
 
@@ -123,6 +120,7 @@ def Load_embedding_file(file_embedding_model):
 def save_dict(dict):
     input_file = open("./corpus/temp/dict_onehot.pickl", "wb")
     pickle.dump(dict, input_file)
+    input_file.close()
 
 def load_dict():
     a = open("./corpus/temp/dict_onehot.pickl", 'rb')
@@ -199,7 +197,7 @@ def get_all(words, tags, labels, dict_op):
         # print(fields[0]+":"+fields[6])
         # print(dict_train[i][fields[0]+":"+fields[6]])
         # Y.append(np.array(dict_op[dict_train[i][fields[0]+":"+fields[6]]+"\n"]))
-
+    a.close()
     return [X_word, X_tags, X_label], Y_
 
 
@@ -221,9 +219,10 @@ def make_softmax_arq(labels):
     op = 0
     for i in range(0, 2):
         for l in labels.keys():
-            if op == 0:
+            if op == 0 and not("NULL"in l):
                 operations_arq.write("LEFTARC" + ":" + l + "\n")
-            else:
+
+            elif op == 1 and not("NULL"in l):
                 operations_arq.write("RIGHTARC" + ":" + l + "\n")
         op = 1
     operations_arq.write("SHIFT")
@@ -247,60 +246,26 @@ def id_tensor_to_one_hot_tensor(tensor_2d, one_hot_dim=None):
 
 
 def extract_training_data_arc_standard(parser_std):
-    arquivo = open("./corpus/train/portuguese_train.conll", "r")
-    a = arquivo.read()
-    graphs = [DependencyGraph(entry) for entry in a.split('\n\n') if entry]
+    trees = ReadTrees("./corpus/train/english_train.conll")
+    tr,se = trees.load_corpus()
     input_file = open("./corpus/temp/parc_test.pickl", "wb")
-    parser_std._create_training_examples_arc_std(graphs, input_file)
-    arquivo.close()
+    parser_std._create_training_examples_arc_std(se,tr, input_file)
     input_file.close()
     #input_file.close()
 
 
-def clean_corpus(path, parser_std):
-    arquivo = open(path)
-    a = arquivo.read()
-    new_training_data = open(path + "1", "w")
-    graphs = [DependencyGraph(entry) for entry in a.split('\n\n') if entry]
-    for depgraph in graphs:
-        if parser_std._is_projective(depgraph):
-            new_training_data.write(depgraph.to_conll(style=10) + "\n")
-
-    os.remove(arquivo.name)
-    new_training_data.close()
-    os.rename(new_training_data.name, (new_training_data.name).replace("1", ""))
-    new_training_data.close()
-
-
-
-def parse(parser_std, model, path_test):
-    # carrega gold
-    arquivo = open(path_test)
-    a = arquivo.read()
-    graphs = [DependencyGraph(entry) for entry in a.split('\n\n') if entry]
-    words = Load_embedding_file("word.txt")
-    tags = Load_embedding_file("pos.txt")
-    labels = Load_embedding_file("label.txt")
-    dict_op = load_dict()
-
-    set_parser = parser_std.parse(graphs, model, words, tags, labels, dict_op)
-
-    return set_parser
 
 def f_measure(Y_pred, Y):
     r = recall_score(Y_pred, Y, average="macro")
     p = precision_score(Y_pred, Y, average="macro")
     f = 2 * (p * r) / (p + r)
     return f
-
-
 # carrega analisador
 parser_std = TransitionParser('arc-standard')
 
 # Treinamento do modelo
 model = pre_trainneural(parser_std)
-model.save_weights('./my_model.h5', overwrite=True)
+model.save_weights('./my_model2.h5', overwrite=True)
 
-model_ = Model(model, "./corpus/test/portuguese_test.conll", "./my_model.h5", parser_std)
+model_ = Model(model, "./corpus/test/english_test.conll", "./my_model2.h5", parser_std)
 model_.parse_language()
-model_.evaluate_parser()
