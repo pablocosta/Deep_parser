@@ -9,12 +9,11 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import copy
 import pickle
-from copy import deepcopy
+from DepedencyTree import DependencyTree
 
 try:
-    from numpy import array
+    from numpy import array,argmax, delete
     from scipy import sparse
 except ImportError:
     pass
@@ -36,23 +35,66 @@ class Configuration(object):
     This class also provides a method to represent a configuration as list of features.
     """
 
-    def __init__(self, dep_graph):
+    def __init__(self, sent):
         """
         :param dep_graph: the representation of an input in the form of dependency graph.
         :type dep_graph: DependencyGraph where the dependencies are not specified.
         """
         # dep_graph.nodes contain list of token for a sentence
         self.stack = [0]  # The root element
-        self.buffer = list(range(1, len(dep_graph.nodes)))  # The rest is in the buffer
+        self.buffer = []
+        self.tree = DependencyTree()
+        i=1
+        while i <= sent.n:
+            self.buffer.append(i)
+            self.tree.add(-1, "UNKNOWN")
+            i+=1
         self.arcs = []  # empty set of arc
-        self._tokens = copy.deepcopy(dep_graph.nodes)
-        self.n = len(dep_graph.nodes)
-        self._max_address = len(self.buffer)
+        self._tokens = sent.words
+        self.n = sent.n
+        self.sent = sent
+        self._max_address = sent.n
 
+    def get_head(self, k):
+        return self.tree.get_head(k)
+    def getLabel(self, k):
+        return self.tree.get_label(k)
+    def remove_second_top_stack(self):
+        n_stack = self.get_stack_size()
+        if n_stack < 2:
+            return False
+        del self.stack[self.get_stack_size()-2]
+        return True
+    def shift(self):
+        """
+        Note that the algorithm for shift is the SAME for arc-standard and arc-eager
+            :param configuration: is the current configuration
+            :return : A new configuration or -1 if the pre-condition is not satisfied
+        """
+
+        k = self.getBuffer(0)
+        if k == -1:
+            return False
+        del self.buffer[0]
+        self.stack.append(k)
+        return True
+
+    def remove_top_stack(self):
+        n_stack = self.get_stack_size()
+        if n_stack < 1:
+            return False
+        del self.stack[ self.get_stack_size() -1]
+        return True
     def __str__(self):
         return 'Stack : ' + \
                str(self.stack) + '  Buffer : ' + str(self.buffer) + '   Arcs : ' + str(self.arcs)
-
+    def has_other_child(self,k, depgraph):
+        i=1
+        while i <= self.tree.n:
+            if depgraph.get_head(i) == k and self.tree.get_head(i) != k:
+                return True
+            i +=1
+        return False
     def _check_informative(self, feat, flag=False):
         """
         Check whether a feature is informative
@@ -68,30 +110,28 @@ class Configuration(object):
         return True
 
     def getLeftChild_(self, k, cnt):
-        if (k < 0) or (k > self.n):
+        if (k < 0) or (k > self.tree.n):
             return -1
         i = 1
         c = 0
         while (i < k):
-            aux = self._tokens[i]
-            if aux['head'] == k:
+            if self.tree.get_head(i) == k:
                 c += 1
                 if c == cnt:
                     return i
             i += 1
         return -1
 
-    def getLeftChild(self, i):
-        return self.getLeftChild_(i, 1)
+    def getLeftChild(self, k):
+        return self.getLeftChild_(k, 1)
 
     def getRightChild_(self, k, cnt):
-        if (k < 0) or (k > self.n):
+        if (k < 0) or (k > self.tree.n):
             return -1
         c = 0
-        i = self.n
+        i = self.tree.n
         while i > k:
-            aux = self._tokens[i]
-            if aux['head'] == k:
+            if self.tree.get_head(i) == k:
 
                 c += 1
                 if c == cnt:
@@ -99,9 +139,12 @@ class Configuration(object):
             i -= 1
 
         return -1
-
-    def getRightChild(self, i):
-        return self.getRightChild_(i, 1)
+    def getRightChild(self, k):
+        return self.getRightChild_(k, 1)
+    def get_buffer_size(self):
+        return len(self.buffer)
+    def get_stack_size(self):
+        return len(self.stack)
 
     def getWord(self, k):
         if k == 0:
@@ -109,14 +152,10 @@ class Configuration(object):
         else:
             k -= 1
 
-        if (k < 0) or (k >= len(self.buffer)):
+        if (k < 0) or (k >= self.sent.n):
             return "NULL"
         else:
-            token = self._tokens[k]
-            if token['word'] is None:
-                return "NULL"
-            else:
-                return token['word']
+            return self.sent.words[k]
 
     def getPos(self, k):
         if k == 0:
@@ -124,30 +163,24 @@ class Configuration(object):
         else:
             k -= 1
 
-        if (k < 0) or (k >= len(self.buffer)):
+        if (k < 0) or (k >= self.sent.n):
             return "NULL"
         else:
-            token = self._tokens[k]
-            return token['ctag']
+            return self.sent.poss[k]
+    def add_arc(self, h, m, l):
+        self.tree.set(m,h,l)
 
-    def getLabel(self, k):
-
-        if k <= 0 or k > self.n:
-            return "NULL"
-        token = self._tokens[k]
-        return token['rel']
-
-    def getStack(self, indice):
+    def getStack(self, k):
         n_stack = len(self.stack)
-        if indice >= 0 and indice < n_stack:
-            return self.stack[n_stack - 1 - indice]
+        if k >= 0 and k < n_stack:
+            return self.stack[n_stack - 1 - k]
         else:
             return -1
 
-    def getBuffer(self, indice):
+    def getBuffer(self, k):
         n_buffer = len(self.buffer)
-        if ((indice >= 0) and (indice < n_buffer)):
-            return self.buffer[indice]
+        if (k >= 0) and (k < n_buffer):
+            return self.buffer[k]
         else:
             return -1
 
@@ -310,10 +343,14 @@ class Transition(object):
             :param configuration: is the current configuration
             :return : A new configuration or -1 if the pre-condition is not satisfied
         """
-        if len(conf.buffer) <= 0:
-            return -1
-        idx_wi = conf.buffer.pop(0)
-        conf.stack.append(idx_wi)
+
+        k = conf.get_buffer(0)
+        if k == -1:
+            return False
+        conf.buffer.pop(0)
+        conf.stack.append(k)
+        return True
+
 
 
 class TransitionParser(ParserI):
@@ -338,17 +375,15 @@ class TransitionParser(ParserI):
         self._transition = {}
         self._match_transition = {}
 
-    def _get_dep_relation(self, idx_parent, idx_child, depgraph):
-        p_node = depgraph.nodes[idx_parent]
-        c_node = depgraph.nodes[idx_child]
-
-        if c_node['word'] is None:
-            return None  # Root word
-
-        if c_node['head'] == p_node['address']:
-            return c_node['rel']
+    def _get_dep_relation(self, depgraph, conf):
+        w1 = conf.getStack(1)
+        w2 = conf.getStack(0)
+        if w1 > 0 and depgraph.get_head(w1) == w2:
+            return Transition.LEFT_ARC+":"+str(depgraph.get_label(w1))
+        elif (w1 >= 0) and (depgraph.get_head(w2) ==w1) and (not(conf.has_other_child(w2, depgraph))):
+            return Transition.RIGHT_ARC+":"+str(depgraph.get_label(w2))
         else:
-            return None
+            return Transition.SHIFT
 
     def _convert_to_binary_features(self, features):
         """
@@ -402,8 +437,132 @@ class TransitionParser(ParserI):
 
     def _write_blenk_in_file(self, input_file):
         input_file.write("\n")
+    def is_terminal(self, conf):
 
-    def _create_training_examples_arc_std(self, depgraphs, input_file):
+        if conf.get_stack_size() == 1 and conf.get_buffer_size() == 0:
+            return True
+        else:
+            return False
+    def get_udt_sub_obj_relations(self):
+        udt_sub_obj_relations = ["dobj","iobj","adpobj","csubj",
+                                      "csubjpass", "nsubj", "nsubjpass"]
+        return udt_sub_obj_relations
+
+    def get_ponctuation_tags(self):
+        en_punct_tags = ["``","''", ".",",",":"]
+        return en_punct_tags
+
+    def evaluate(self, sents, pred_trees, gold_trees):
+        punc_tags = self.get_ponctuation_tags()
+        sub_obj_relations = self.get_udt_sub_obj_relations()
+        correct_arcs = 0
+        correct_arcs_wo_punc = 0
+        correct_heads = 0
+        correct_heads_wo_punc = 0
+
+        correct_heads_sub_obj = 0
+        sum_arcs_sub_obj = 0
+
+        correct_trees = 0
+        correct_trees_wo_punc = 0
+        correct_root = 0
+
+        sum_arcs = 0
+        sum_arcs_wo_punc = 0
+
+
+        for i in range(0, len(pred_trees)):
+            n_correct_head = 0
+            n_correct_head_wo_punc = 0
+            non_punc = 0
+            for j in range(1, pred_trees[i].n):
+                if pred_trees[i].get_head(j) == gold_trees[i].get_head(j):
+                    correct_heads  += 1
+                    n_correct_head += 1
+                    if pred_trees[i].get_label(j) == gold_trees[i].get_label(j):
+                        correct_arcs += 1
+                sum_arcs += 1
+                tag = sents[i].poss[j-1]
+
+                if tag not in punc_tags:
+                    sum_arcs_wo_punc += 1
+                    non_punc += 1
+                    if pred_trees[i].get_head(j) == gold_trees[i].get_head(j):
+                        correct_heads_wo_punc += 1
+                        n_correct_head_wo_punc += 1
+                        if pred_trees[i].get_label(j) == gold_trees[i].get_label(j):
+                            correct_arcs_wo_punc += 1
+
+                gold_rel = gold_trees[i].get_label(j)
+
+                if gold_rel in sub_obj_relations:
+                    sum_arcs_sub_obj += 1
+                    if pred_trees[i].get_head(j) == gold_trees[i].get_head(j):
+                        correct_heads_sub_obj += 1
+
+            if n_correct_head == pred_trees[i].n:
+                correct_trees += 1
+            if non_punc == n_correct_head_wo_punc:
+                correct_trees_wo_punc +=1
+            if pred_trees[i].get_root() == gold_trees[i].get_root():
+                correct_root += 1
+        print("UAS: ")
+        print(correct_heads * 100.0 / sum_arcs)
+        print("-------")
+        print("UASwoPunc: ")
+        print(correct_heads_wo_punc * 100.0 / sum_arcs_wo_punc)
+        print("-------")
+        print("LAS: ")
+        print(correct_arcs  * 100.0 / sum_arcs)
+        print("-------")
+        print("LASwoPunc: ")
+        print(correct_arcs_wo_punc  * 100.0 / sum_arcs_wo_punc)
+        print("-------")
+
+
+    def apply(self, conf, op):
+        w1 = conf.getStack(1)
+        w2 = conf.getStack(0)
+        label = ":"
+
+        if op[0].startswith("L"):
+            label = ":".join(op[1:])
+            conf.add_arc(w2,w1, label)
+            conf.remove_second_top_stack()
+
+        elif op[0].startswith("R"):
+            label = ":".join(op[1:])
+            conf.add_arc(w1,w2,label)
+            conf.remove_top_stack()
+        else:
+            conf.shift()
+
+
+    def can_apply(self, conf, op):
+        if op[0].startswith("L") or op[0].startswith("R"):
+            label = op[1]
+
+            if op[0].startswith("L"):
+                h = conf.getStack(0)
+            else:
+                h = conf.getStack(1)
+            if h <0:
+                return False
+            if h == 0 and not("ROOT"in label.upper()):
+                return False
+            #ver se deixa comentado ou nao multirooted
+            if h > 0 and ("ROOT" in label.upper()):
+                return False
+        n_stack  = conf.get_stack_size()
+        n_buffer = conf.get_buffer_size()
+        if op[0].startswith("L"):
+            return n_stack > 2
+        elif op[0].startswith("R"):
+            return n_stack > 2 or (n_stack == 2 and n_buffer == 0)
+        else:
+            return n_buffer > 0
+
+    def _create_training_examples_arc_std(self, sents, tree, input_file):
         """
         Create the training example in the libsvm format and write it to the input_file.
         Reference : Page 32, Chapter 3. Dependency Parsing by Sandra Kubler, Ryan McDonal and Joakim Nivre (2009)
@@ -411,61 +570,32 @@ class TransitionParser(ParserI):
         operation = Transition(self.ARC_STANDARD)
         count_proj = 0
         training_seq = []
-        for depgraph in depgraphs:
-            if not self._is_projective(depgraph):
-                continue
 
-            count_proj += 1
-            conf = Configuration(depgraph)
+        for i in range(0, len(sents)):
+            if tree[i].is_projective():
+                count_proj += 1
+                conf = Configuration(sents[i])
+                while not self.is_terminal(conf):
+                    (w_features, p_features, l_features) = conf.extract_features()
+                    # binary_features = self._convert_to_binary_features(features)
 
-            while len(conf.buffer) > 0:
-                b0 = conf.buffer[0]
-                (w_features, p_features, l_features) = conf.extract_features()
-                # binary_features = self._convert_to_binary_features(features)
-
-
-
-                if len(conf.stack) > 0:
-                    s0 = conf.stack[len(conf.stack) - 1]
-
+                    for n in range(0, len(l_features)):
+                        if l_features[n] == -1:
+                            l_features[n] = "NULL"
                     # Left-arc operation
-                    rel = self._get_dep_relation(b0, s0, depgraph)
 
-                    if rel is not None:
-                        key = Transition.LEFT_ARC + ':' + rel
+                    rel = self._get_dep_relation(tree[i], conf)
 
-                        training_seq.append(self._write_to_file(key, w_features, p_features, l_features))
-                        operation.left_arc(conf, rel)
-                        continue
 
-                    # Right-arc operation
-                    rel = self._get_dep_relation(s0, b0, depgraph)
-                    if rel is not None:
-                        precondition = True
-                        # Get the max-index of buffer
-                        maxID = conf._max_address
+                    baseTransition = rel.split(":")
+                    training_seq.append(self._write_to_file(rel, w_features, p_features, l_features))
+                    self.apply(conf, baseTransition)
 
-                        for w in range(maxID + 1):
-                            if w != b0:
-                                relw = self._get_dep_relation(b0, w, depgraph)
 
-                                if relw is not None:
-                                    if (b0, relw, w) not in conf.arcs:
-                                        precondition = False
 
-                        if precondition:
-                            key = Transition.RIGHT_ARC + ':' + rel
-                            training_seq.append(self._write_to_file(key, w_features, p_features, l_features))
-                            operation.right_arc(conf, rel)
-                            continue
-
-                # Shift operation as the default
-                key = Transition.SHIFT
-                training_seq.append(self._write_to_file(key, w_features, p_features, l_features))
-                operation.shift(conf)
 
         pickle.dump(training_seq, input_file)
-        print(" Number of training examples : " + str(len(depgraphs)))
+        print(" Number of training examples : " + str(len(sents)))
         print(" Number of valid (projective) examples : " + str(count_proj))
 
     def _create_training_examples_arc_eager(self, depgraphs, input_file):
@@ -535,7 +665,49 @@ class TransitionParser(ParserI):
 
         return [dict[l] for l in list]
 
-    def parse(self, depgraphs, model, words, tags, labels, dict_op):
+    def _can_apply(self, conf, dict_op, sort_dict, max):
+
+        for k in range(0,max):
+            for key in dict_op.keys():
+                if dict_op[key] == sort_dict[k]:
+                    strTransition = key
+                    op = strTransition.split(":")
+                    if self.can_apply(conf, op):
+                        return strTransition
+        return " "
+
+
+
+
+    def predict(self,sent, model, words, tags, labels, dict_op):
+        conf = Configuration(sent)
+
+        while not self.is_terminal(conf):
+
+            (word_features, pos_features, label_features) = conf.extract_features()
+            for n in range(0, len(label_features)):
+                if label_features[n] == -1:
+                    label_features[n] = "NULL"
+            y_pred_model = model.predict_proba(X=[array([self.Get_features_(word_features,words)
+                                                          ]), array([self.Get_features_(pos_features,tags)]
+                                                                    ), array([self.Get_features_(label_features, labels)]
+                                                                             )])
+            sort_dict = dict()
+            max = len(y_pred_model[0])
+            y = y_pred_model[0]
+            for ind in range(0,max):
+                sort_dict[ind] = argmax(y)
+                y = delete(y,sort_dict[ind])
+            strTransition = self._can_apply(conf, dict_op, sort_dict, max)
+
+            baseTransition = strTransition.split(":")
+
+            self.apply(conf, baseTransition)
+        return conf.tree
+        # Finish with operations build the dependency graph from Conf.arcs
+
+
+    def parse(self, sents, tree, model, words, tags, labels, dict_op):
         """
         :param depgraphs: the list of test sentence, each sentence is represented as a dependency graph where the 'head' information is dummy
         :type depgraphs: list(DependencyGraph)
@@ -543,69 +715,13 @@ class TransitionParser(ParserI):
         :type modelfile: str
         :return: list (DependencyGraph) with the 'head' and 'rel' information
         """
-        result = []
         operation = Transition(self._algorithm)
-        for depgraph in depgraphs:
 
-            dictnionary_graph = depgraph.nodes
-            conf = Configuration(depgraph)
-            while len(conf.buffer) > 0:
-                b0 = conf.buffer[0]
+        predicted_tree = []
+        for i in range(0, len(sents)):
+            print("Arvore:",i)
+            predicted_tree.append(self.predict(sents[i],  model, words, tags, labels, dict_op))
 
-                # It's best to use decision function as follow BUT it's not supported yet for sparse SVM
-                # Using decision funcion to build the votes array
-                # dec_func = model.decision_function(x_test)[0]
-                # votes = {}
-                # k = 0
-                # for i in range(len(model.classes_)):
-                #    for j in range(i+1, len(model.classes_)):
-                #        #if  dec_func[k] > 0:
-                #            votes.setdefault(i,0)
-                #            votes[i] +=1
-                #        else:
-                #           votes.setdefault(j,0)
-                #           votes[j] +=1
-                #        k +=1
-                # Sort votes according to the values
-                # sorted_votes = sorted(votes.items(), key=itemgetter(1), reverse=True)
+        self.evaluate(sents, predicted_tree, tree)
 
-                # extract the right X
-
-                (word_features, pos_features, label_features) = conf.extract_features()
-                y_pred_model = model.predict_classes(X=[array([self.Get_features_(word_features,words)
-                                                              ]), array([self.Get_features_(pos_features,tags)]
-                                                                        ), array([self.Get_features_(label_features, labels)]
-                                                                                 )])
-                for key in dict_op.keys():
-                    if dict_op[key] == y_pred_model[0]:
-                        strTransition = key
-                # Note that SHIFT is always a valid operation
-                if strTransition in self._match_transition.values():
-                    baseTransition = strTransition.split(":")[0]
-                    if baseTransition == Transition.LEFT_ARC:
-                        operation.left_arc(conf, strTransition.split(":")[1])
-                    elif baseTransition == Transition.RIGHT_ARC:
-                        operation.right_arc(conf, strTransition.split(":")[1])
-                    elif baseTransition == Transition.REDUCE:
-                        operation.reduce(conf)
-                    elif baseTransition == Transition.SHIFT:
-                        operation.shift(conf)
-                else:
-                    raise ValueError("The predicted transition is not recognized, expected errors")
-
-                print(conf)
-            # Finish with operations build the dependency graph from Conf.arcs
-
-            new_depgraph = deepcopy(depgraph)
-            for key in new_depgraph.nodes:
-                node = new_depgraph.nodes[key]
-                node['rel'] = ''
-                # With the default, all the token depend on the Root
-                node['head'] = 0
-            for (head, rel, child) in conf.arcs:
-                c_node = new_depgraph.nodes[child]
-                c_node['head'] = head
-                c_node['rel'] = rel
-            result.append(new_depgraph)
-
-        return result
+        return predicted_tree
